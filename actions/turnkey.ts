@@ -93,7 +93,7 @@ export const createUserSubOrg = async ({
     userId,
   });
 
-  return { subOrg, user };
+  return { subOrg, user, subOrganizationName };
 };
 
 type EmailParam = { email: Email };

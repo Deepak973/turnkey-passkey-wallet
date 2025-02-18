@@ -18,6 +18,10 @@ import { useTurnkey, TurnkeyProvider } from "@turnkey/sdk-react";
 import { Email, User } from "@/types/turnkey";
 import { EthereumWallet } from "@turnkey/wallet-stamper";
 
+import { User as DbUser } from "@/app/db/entities/User";
+import { EntityManager } from "typeorm";
+import { Passkey } from "@/app/db/entities/Passkey";
+
 const wallet = new EthereumWallet();
 
 export const loginResponseToUser = (
@@ -119,36 +123,77 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useTurnkey();
 
   const loginWithPasskey = async (username: string) => {
-    console.log("trying");
-    console.log("username", username);
-    const subOrgId = await getSubOrgIdByUsername(username as string);
-    console.log("subOrgId", subOrgId);
-
-    if (subOrgId?.length) {
-      const loginResponse = await passkeyClient?.login();
-      console.log("loginResponse", loginResponse);
-      if (loginResponse?.organizationId) {
-        dispatch({
-          type: "PASSKEY",
-          payload: loginResponseToUser(loginResponse, AuthClient.Passkey),
-        });
-        router.push("/dashboard");
+    try {
+      if (!username) {
+        throw new Error("Username is required");
       }
-    } else {
-      console.log("Incorrect username");
+
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ username }),
+      });
+
+      console.log("response", response);
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
+        throw new Error(
+          errorData.error || `HTTP error! status: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+      if (!data.user) {
+        throw new Error("Invalid response format");
+      }
+
+      const user = data.user;
+      if (!user.passkeys?.length) {
+        throw new Error("No passkey found for this user");
+      }
+
+      const subOrgId = await getSubOrgIdByUsername(username);
+      if (!subOrgId?.length) {
+        throw new Error("User organization not found");
+      }
+      console.log("subOrgId", subOrgId);
+
+      const loginResponse = await passkeyClient?.login();
+      if (!loginResponse?.organizationId) {
+        throw new Error("Login failed");
+      }
+
+      // Verify the login response matches the stored user data
+      if (loginResponse.organizationId !== user.organizationId) {
+        throw new Error("Invalid organization");
+      }
+
+      dispatch({
+        type: "PASSKEY",
+        payload: loginResponseToUser(loginResponse, AuthClient.Passkey),
+      });
+
+      router.push("/dashboard");
+    } catch (error: any) {
+      console.error("Login error:", error);
+      dispatch({ type: "ERROR", payload: error.message });
     }
   };
 
   const signupWithPasskey = async (email: Email, username: string) => {
     dispatch({ type: "LOADING", payload: true });
 
-    const usernameExists = await checkUsernameExists(username as string);
-    console.log("usernameExists", usernameExists);
-
-    // User either does not have an account with a sub organization
-    // or does not have a passkey
-    // Create a new passkey for the user
     try {
+      const usernameExists = await checkUsernameExists(username as string);
+      if (usernameExists) {
+        throw new Error("Username already exists");
+      }
+
       const { encodedChallenge, attestation } =
         (await passkeyClient?.createUserPasskey({
           publicKey: {
@@ -159,11 +204,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         })) || {};
 
-      console.log(encodedChallenge, attestation);
-
-      // Create a new sub organization for the user
       if (encodedChallenge && attestation) {
-        const { subOrg, user } = await createUserSubOrg({
+        const { subOrg, user, subOrganizationName } = await createUserSubOrg({
           email: email as Email,
           passkey: {
             challenge: encodedChallenge,
@@ -172,7 +214,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userName: username as string,
         });
 
-        if (subOrg && user) {
+        if (subOrg && user && subOrganizationName) {
+          // Save user to database through API
+          const response = await fetch("/api/auth/signup", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              username,
+              email,
+              organizationId: subOrg.subOrganizationId,
+              organizationName: subOrganizationName,
+              userId: user.userId,
+              passkey: {
+                challenge: encodedChallenge,
+                attestation,
+              },
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to create user");
+          }
+
           await setStorageValue(
             StorageKeys.UserSession,
             loginResponseToUser(
@@ -192,10 +259,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error: any) {
-      console.log("error", error);
+      console.error(error);
       dispatch({ type: "ERROR", payload: error.message });
-    } finally {
-      console.log("error");
     }
   };
 
