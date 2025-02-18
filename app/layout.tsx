@@ -67,7 +67,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body style={{ border: "10px solid blue" }} className="bg-red-500">
+      <body className="bg-red-500 border-2 border-blue-500">
         <Providers>{children}</Providers>
       </body>
     </html>

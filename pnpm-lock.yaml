@@ -71,6 +71,9 @@ dependencies:
   react-hook-form:
     specifier: ^7.54.2
     version: 7.54.2(react@19.0.0)
+  react-toastify:
+    specifier: ^11.0.3
+    version: 11.0.3(react-dom@19.0.0)(react@19.0.0)
   sonner:
     specifier: ^1.7.4
     version: 1.7.4(react-dom@19.0.0)(react@19.0.0)
@@ -3796,6 +3799,17 @@ packages:
 
   /react-is@19.0.0:
     resolution: {integrity: sha512-H91OHcwjZsbq3ClIDHMzBShc1rotbfACdWENsmEf0IFvZ3FgGPtdHMcsv45bQ1hAbgdfiA8SnxTKfDS+x/8m2g==}
+    dev: false
+
+  /react-toastify@11.0.3(react-dom@19.0.0)(react@19.0.0):
+    resolution: {integrity: sha512-cbPtHJPfc0sGqVwozBwaTrTu1ogB9+BLLjd4dDXd863qYLj7DGrQ2sg5RAChjFUB4yc3w8iXOtWcJqPK/6xqRQ==}
+    peerDependencies:
+      react: ^18 || ^19
+      react-dom: ^18 || ^19
+    dependencies:
+      clsx: 2.1.1
+      react: 19.0.0
+      react-dom: 19.0.0(react@19.0.0)
     dev: false
 
   /react-transition-group@4.4.5(react-dom@19.0.0)(react@19.0.0):
