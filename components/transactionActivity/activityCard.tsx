@@ -83,51 +83,60 @@ export default function ActivityCard() {
   }, [selectedAccount?.address]);
 
   if (loading) {
-    return <div className="p-4">Loading transactions...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-md p-4 bg-white rounded-lg shadow">
-      <h2 className="text-lg font-semibold mb-4">Transaction Activity</h2>
-      <div className="space-y-3">
-        {transactions.map((tx) => (
-          <div
-            key={tx.hash}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-          >
-            <div className="flex items-center gap-3">
-              {tx.status === "sent" ? (
-                <ArrowUpRight className="text-red-500" />
-              ) : (
-                <ArrowDownRight className="text-green-500" />
-              )}
-              <div>
-                <div className="font-medium">
-                  {tx.status === "sent" ? "Sent" : "Received"}
+    <div className="space-y-4">
+      {transactions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+          <div className="text-center">
+            <p className="font-medium">No transactions yet</p>
+            <p className="text-sm">Your recent transactions will appear here</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {transactions.map((tx) => (
+            <div
+              key={tx.hash}
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-white">
+                  {tx.status === "sent" ? (
+                    <ArrowUpRight className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <ArrowDownRight className="h-5 w-5 text-green-500" />
+                  )}
+                </div>
+                <div>
+                  <div className="font-medium text-gray-900">
+                    {tx.status === "sent" ? "Sent" : "Received"}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {tx.status === "sent"
+                      ? `To: ${truncateAddress(tx.to || "")}`
+                      : `From: ${truncateAddress(tx.from)}`}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="font-medium text-gray-900">
+                  {tx.value ? formatEther(tx.value) : "0"} ETH
                 </div>
                 <div className="text-sm text-gray-500">
-                  {tx.status === "sent"
-                    ? `To: ${truncateAddress(tx.to || "")}`
-                    : `From: ${truncateAddress(tx.from)}`}
+                  {new Date(tx.timestamp).toLocaleDateString()}
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="font-medium">
-                {tx.value ? formatEther(tx.value) : "0"} ETH
-              </div>
-              <div className="text-sm text-gray-500">
-                {new Date(tx.timestamp).toLocaleDateString()}
-              </div>
-            </div>
-          </div>
-        ))}
-        {transactions.length === 0 && (
-          <div className="text-center text-gray-500 py-4">
-            No transactions found
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

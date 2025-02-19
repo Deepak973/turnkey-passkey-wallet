@@ -32,6 +32,7 @@ export default function SendTransaction({
 
   const totalGasFeesUSD = parseFloat(formatEther(totalGasFees)) * ethPrice;
   const totalUSD = parseFloat(amountUSD) + totalGasFeesUSD;
+  console.log("totalUSD", totalUSD);
 
   return (
     <div className="flex flex-col gap-4">

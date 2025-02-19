@@ -156,7 +156,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (loginResponse.organizationId !== user.organizationId) {
-        throw new Error("Invalid organization");
+        throw new Error(
+          "Invalid Passkey. Make sure you are using the correct passkey associated with this account"
+        );
       }
 
       // Create the user object with the new structure
