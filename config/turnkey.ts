@@ -1,6 +1,11 @@
 import { env } from "@/env.mjs";
 
-const { NEXT_PUBLIC_ORGANIZATION_ID, NEXT_PUBLIC_BASE_URL } = env;
+const {
+  NEXT_PUBLIC_ORGANIZATION_ID,
+  NEXT_PUBLIC_BASE_URL,
+  NEXT_PUBLIC_RP_ID,
+  NEXT_PUBLIC_ALCHEMY_API_KEY,
+} = env;
 
 export const turnkeyConfig = {
   apiBaseUrl: NEXT_PUBLIC_BASE_URL,
@@ -23,7 +28,7 @@ export const turnkeyConfig = {
     },
   },
   passkey: {
-    rpId: env.NEXT_PUBLIC_RP_ID || "localhost",
+    rpId: NEXT_PUBLIC_RP_ID || "localhost",
   },
-  rpcUrl: `https://base-sepolia.g.alchemy.com/v2/${env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
+  rpcUrl: `https://base-sepolia.g.alchemy.com/v2/${NEXT_PUBLIC_ALCHEMY_API_KEY}`,
 };
