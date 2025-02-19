@@ -137,17 +137,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ username }),
       });
 
-      console.log("response", response);
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ error: "Unknown error" }));
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`
-        );
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Login failed");
       }
 
-      const data = await response.json();
       if (!data.user) {
         throw new Error("Invalid response format");
       }
@@ -161,14 +156,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!subOrgId?.length) {
         throw new Error("User organization not found");
       }
-      console.log("subOrgId", subOrgId);
 
       const loginResponse = await passkeyClient?.login();
       if (!loginResponse?.organizationId) {
         throw new Error("Login failed");
       }
 
-      // Verify the login response matches the stored user data
       if (loginResponse.organizationId !== user.organizationId) {
         throw new Error("Invalid organization");
       }
@@ -181,7 +174,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
-      dispatch({ type: "ERROR", payload: error.message });
+      // Re-throw the error so the calling component can handle it
+      throw error;
     }
   };
 
