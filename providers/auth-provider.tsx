@@ -18,10 +18,6 @@ import { useTurnkey, TurnkeyProvider } from "@turnkey/sdk-react";
 import { Email, User } from "@/types/turnkey";
 import { EthereumWallet } from "@turnkey/wallet-stamper";
 
-import { User as DbUser } from "@/app/db/entities/User";
-import { EntityManager } from "typeorm";
-import { Passkey } from "@/app/db/entities/Passkey";
-
 const wallet = new EthereumWallet();
 
 export const loginResponseToUser = (
@@ -148,9 +144,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const user = data.user;
-      if (!user.passkeys?.length) {
-        throw new Error("No passkey found for this user");
-      }
 
       const subOrgId = await getSubOrgIdByUsername(username);
       if (!subOrgId?.length) {
@@ -166,9 +159,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Invalid organization");
       }
 
+      // Create the user object with the new structure
+      const userResponse = loginResponseToUser(
+        {
+          userId: user.id,
+          username: user.username,
+          organizationId: user.organizationId,
+          organizationName: user.organizationName,
+          session: undefined,
+          sessionExpiry: undefined,
+        },
+        AuthClient.Passkey
+      );
+
+      // Add wallet address if exists
+      // if (user.walletAddress) {
+      //   userResponse.walletAddress = user.walletAddress;
+      // }
+
       dispatch({
         type: "PASSKEY",
-        payload: loginResponseToUser(loginResponse, AuthClient.Passkey),
+        payload: userResponse,
       });
 
       router.push("/dashboard");
@@ -221,40 +232,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               email,
               organizationId: subOrg.subOrganizationId,
               organizationName: subOrganizationName,
-              userId: user.userId,
-              passkey: {
-                challenge: encodedChallenge,
-                attestation,
-              },
             }),
           });
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to create user");
+          const data = await response.json();
+
+          if (!data.success) {
+            throw new Error(data.message || "Failed to create account");
           }
 
-          await setStorageValue(
-            StorageKeys.UserSession,
-            loginResponseToUser(
-              {
-                userId: user.userId,
-                username: user.userName,
-                organizationId: subOrg.subOrganizationId,
-                organizationName: "",
-                session: undefined,
-                sessionExpiry: undefined,
-              },
-              AuthClient.Passkey
-            )
+          const userResponse = loginResponseToUser(
+            {
+              userId: data.user.id,
+              username: data.user.username,
+              organizationId: data.user.organizationId,
+              organizationName: data.user.organizationName,
+              session: undefined,
+              sessionExpiry: undefined,
+            },
+            AuthClient.Passkey
           );
+
+          // Add wallet address if exists
+          // if (data.user.walletAddress) {
+          //   userResponse.walletAddress = data.user.walletAddress;
+          // }
+
+          await setStorageValue(StorageKeys.UserSession, userResponse);
+
+          dispatch({
+            type: "PASSKEY",
+            payload: userResponse,
+          });
 
           router.push("/dashboard");
         }
       }
     } catch (error: any) {
-      console.error(error);
+      console.error("Signup error:", error);
       dispatch({ type: "ERROR", payload: error.message });
+      throw error;
+    } finally {
+      dispatch({ type: "LOADING", payload: false });
     }
   };
 

@@ -2,11 +2,8 @@
 
 import { TurnkeyProvider } from "@turnkey/sdk-react";
 import { EthereumWallet } from "@turnkey/wallet-stamper";
-
 import { turnkeyConfig } from "@/config/turnkey";
-
 import { AuthProvider } from "./auth-provider";
-import { ThemeProvider } from "./theme-provider";
 
 const wallet = new EthereumWallet();
 

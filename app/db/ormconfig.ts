@@ -1,6 +1,5 @@
 import { DataSource } from "typeorm";
-import { User } from "./entities/User";
-import { Passkey } from "./entities/Passkey";
+import { Account } from "./entities/Account";
 
 let dataSource: DataSource | null = null;
 
@@ -14,7 +13,7 @@ export async function getAppDataSource(): Promise<DataSource> {
       username: "ekt",
       password: "EarnKit304",
       database: "turnkey_auth",
-      entities: [User, Passkey],
+      entities: [Account],
       migrations: ["app/db/migrations/*.js"],
       synchronize: false,
       migrationsTableName: "migrations",

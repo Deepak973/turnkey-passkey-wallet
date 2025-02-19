@@ -4,11 +4,10 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  OneToMany,
 } from "typeorm";
 
 @Entity()
-export class User {
+export class Account {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
@@ -18,21 +17,18 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column()
+  @Column({ name: "organization_id" })
   organizationId: string;
 
-  @Column({ nullable: true })
+  @Column({ name: "organization_name" })
   organizationName: string;
 
-  @Column()
-  userId: string;
+  @Column({ name: "wallet_address", nullable: true })
+  walletAddress: string;
 
-  @OneToMany("Passkey", "user")
-  passkeys: any[];
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: "updated_at" })
   updatedAt: Date;
 }

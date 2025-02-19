@@ -1,6 +1,5 @@
 import { getAppDataSource } from "@/app/db/ormconfig";
-import { User } from "@/app/db/entities/User";
-import { Passkey } from "@/app/db/entities/Passkey";
+import { Account } from "@/app/db/entities/Account";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -13,68 +12,51 @@ export async function POST(req: Request) {
   return await AppDataSource.manager.transaction(
     async (transactionalEntityManager) => {
       try {
-        const {
+        const { username, email, organizationId, organizationName } =
+          await req.json();
+
+        // Create new account
+        const account = transactionalEntityManager.create(Account, {
           username,
           email,
           organizationId,
           organizationName,
-          userId,
-          passkey,
-        } = await req.json();
-
-        // Validate required fields
-        if (!username || !email || !organizationId || !userId || !passkey) {
-          return NextResponse.json(
-            { error: "Missing required fields" },
-            { status: 400 }
-          );
-        }
-
-        // Check if user already exists
-        const existingUser = await transactionalEntityManager.findOne(User, {
-          where: [{ username }, { email }],
         });
 
-        if (existingUser) {
-          return NextResponse.json(
-            { error: "Username or email already exists" },
-            { status: 400 }
-          );
-        }
-
-        // Create new user
-        const newUser = transactionalEntityManager.create(User, {
-          username,
-          email,
-          organizationId,
-          organizationName,
-          userId,
-        });
-
-        const savedUser = await transactionalEntityManager.save(newUser);
-
-        // Create passkey
-        const newPasskey = transactionalEntityManager.create(Passkey, {
-          challenge: passkey.challenge,
-          attestation: passkey.attestation,
-          user: savedUser,
-        });
-
-        await transactionalEntityManager.save(newPasskey);
+        await transactionalEntityManager.save(account);
 
         return NextResponse.json({
+          success: true,
           user: {
-            id: savedUser.id,
-            username: savedUser.username,
-            email: savedUser.email,
-            organizationId: savedUser.organizationId,
-            passkeys: [newPasskey],
+            id: account.id,
+            username: account.username,
+            email: account.email,
+            organizationId: account.organizationId,
+            organizationName: account.organizationName,
+            walletAddress: account.walletAddress,
           },
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Signup error:", error);
+
+        if (error.code === "23505") {
+          // Unique constraint violation
+          return NextResponse.json(
+            {
+              success: false,
+              message: "Username or email already exists",
+              code: "DUPLICATE_ENTRY",
+            },
+            { status: 409 }
+          );
+        }
+
         return NextResponse.json(
-          { error: "Failed to create user" },
+          {
+            success: false,
+            message: "Failed to create account",
+            code: "SERVER_ERROR",
+          },
           { status: 500 }
         );
       }

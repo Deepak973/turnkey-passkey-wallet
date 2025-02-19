@@ -1,5 +1,5 @@
 import { getAppDataSource } from "@/app/db/ormconfig";
-import { User } from "@/app/db/entities/User";
+import { Account } from "@/app/db/entities/Account";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -27,34 +27,20 @@ export async function POST(req: Request) {
           );
         }
 
-        const user = await transactionalEntityManager.findOne(User, {
+        const account = await transactionalEntityManager.findOne(Account, {
           where: { username },
-          relations: ["passkeys"],
         });
 
         // ✅ 404 Not Found → When user does not exist
-        if (!user) {
+        if (!account) {
           return NextResponse.json(
             {
               success: false,
               message:
-                "User not found. Please check your username and try again.",
-              code: "USER_NOT_FOUND",
+                "Account not found. Please check your username and try again.",
+              code: "ACCOUNT_NOT_FOUND",
             },
             { status: 404 }
-          );
-        }
-
-        // ✅ 403 Forbidden → When user exists but has no passkeys
-        if (!user.passkeys?.length) {
-          return NextResponse.json(
-            {
-              success: false,
-              message:
-                "No passkey found for this user. Please set up a passkey first.",
-              code: "NO_PASSKEY",
-            },
-            { status: 403 }
           );
         }
 
@@ -63,11 +49,12 @@ export async function POST(req: Request) {
           {
             success: true,
             user: {
-              id: user.id,
-              username: user.username,
-              email: user.email,
-              organizationId: user.organizationId,
-              passkeys: user.passkeys,
+              id: account.id,
+              username: account.username,
+              email: account.email,
+              organizationId: account.organizationId,
+              organizationName: account.organizationName,
+              walletAddress: account.walletAddress,
             },
           },
           { status: 200 }
@@ -75,7 +62,6 @@ export async function POST(req: Request) {
       } catch (error) {
         console.error("Login error:", error);
 
-        // ✅ 500 Internal Server Error → Unexpected server error
         return NextResponse.json(
           {
             success: false,

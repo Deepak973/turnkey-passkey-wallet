@@ -5,7 +5,6 @@ import { Inter } from "next/font/google";
 import { Providers } from "@/providers";
 
 import { siteConfig } from "@/config/site";
-import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -67,7 +66,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head />
-      <body className="bg-red-500 border-2 border-blue-500">
+      <body className="border-2 border-blue-500">
         <Providers>{children}</Providers>
       </body>
     </html>

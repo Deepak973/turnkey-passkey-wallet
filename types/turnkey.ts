@@ -1,4 +1,4 @@
-import { TurnkeyApiTypes } from "@turnkey/http";
+import { TurnkeyApiTypes, type TurnkeyClient } from "@turnkey/http";
 import { Turnkey } from "@turnkey/sdk-browser";
 import { Address } from "viem";
 
