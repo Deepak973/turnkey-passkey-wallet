@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-@Entity()
+@Entity({ name: "accounts" })
 export class Account {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -23,7 +23,7 @@ export class Account {
   @Column({ name: "organization_name" })
   organizationName: string;
 
-  @Column({ name: "wallet_address", nullable: true })
+  @Column({ name: "wallet_address" })
   walletAddress: string;
 
   @CreateDateColumn({ name: "created_at" })

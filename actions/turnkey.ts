@@ -10,10 +10,13 @@ import { getAddress } from "viem";
 import { Attestation, Email, Wallet } from "@/types/turnkey";
 import { siteConfig } from "@/config/site";
 import { turnkeyConfig } from "@/config/turnkey";
+import { env } from "@/env.mjs";
+
+const { TURNKEY_API_PUBLIC_KEY, TURNKEY_API_PRIVATE_KEY } = env;
 
 const stamper = new ApiKeyStamper({
-  apiPublicKey: process.env.TURNKEY_API_PUBLIC_KEY!,
-  apiPrivateKey: process.env.TURNKEY_API_PRIVATE_KEY!,
+  apiPublicKey: TURNKEY_API_PUBLIC_KEY!,
+  apiPrivateKey: TURNKEY_API_PRIVATE_KEY!,
 });
 
 const client = new TurnkeyServerClient({

@@ -72,15 +72,9 @@ export const Signup = ({ onBack }: { onBack: () => void }) => {
     }
 
     try {
-      const usernameExists = await checkUsernameExists(username);
-      if (usernameExists) {
-        toast.error("Username already exists");
-        return;
-      }
-
       await signupWithPasskey(email as Email, username);
     } catch (error) {
-      toast.error("Signup failed");
+      toast.error("Signup failed" + error);
       console.error(error);
     }
   };

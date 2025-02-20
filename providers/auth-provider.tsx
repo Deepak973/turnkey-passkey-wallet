@@ -221,6 +221,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           userName: username as string,
         });
 
+        console.log("subOrg", subOrg);
         if (subOrg && user && subOrganizationName) {
           // Save user to database through API
           const response = await fetch("/api/auth/signup", {
@@ -234,6 +235,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               email,
               organizationId: subOrg.subOrganizationId,
               organizationName: subOrganizationName,
+              walletAddress: subOrg.wallet?.addresses[0],
             }),
           });
 

@@ -32,6 +32,11 @@ export const env = createEnv({
     TURNKEY_WARCHEST_API_PRIVATE_KEY: z.string().min(1),
     TURNKEY_WARCHEST_ORGANIZATION_ID: z.string().min(1),
     WARCHEST_PRIVATE_KEY_ID: z.string().min(1),
+    NEXT_PUBLIC_DB_USER: z.string().min(1),
+    NEXT_PUBLIC_DB_PASSWORD: z.string().min(1),
+    NEXT_PUBLIC_DB_HOST: z.string().min(1),
+    NEXT_PUBLIC_DB_PORT: z.string().min(1),
+    NEXT_PUBLIC_DB_NAME: z.string().min(1),
   },
   runtimeEnv: {
     NEXT_PUBLIC_APPLE_OAUTH_CLIENT_ID:
@@ -61,6 +66,11 @@ export const env = createEnv({
     TURNKEY_WARCHEST_ORGANIZATION_ID:
       process.env.TURNKEY_WARCHEST_ORGANIZATION_ID,
     WARCHEST_PRIVATE_KEY_ID: process.env.WARCHEST_PRIVATE_KEY_ID,
+    NEXT_PUBLIC_DB_USER: process.env.NEXT_PUBLIC_DB_USER,
+    NEXT_PUBLIC_DB_PASSWORD: process.env.NEXT_PUBLIC_DB_PASSWORD,
+    NEXT_PUBLIC_DB_HOST: process.env.NEXT_PUBLIC_DB_HOST,
+    NEXT_PUBLIC_DB_PORT: process.env.NEXT_PUBLIC_DB_PORT,
+    NEXT_PUBLIC_DB_NAME: process.env.NEXT_PUBLIC_DB_NAME,
   },
   extends: [vercel()],
 });

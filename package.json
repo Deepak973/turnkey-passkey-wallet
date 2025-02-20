@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "init-db": "ts-node -r tsconfig-paths/register scripts/init-db.ts",
-    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "migration:run": "npm run typeorm migration:run -- -d app/db/index.ts",
-    "migration:revert": "npm run typeorm migration:revert -- -d app/db/index.ts",
-    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d ./app/db/ormconfig.ts ./app/db/migrations/CreateUserAndPasskey"
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:run": "pnpm exec typeorm migration:run -- -d app/db/ormconfig.ts",
+    "migration:revert": "pnpm exec typeorm migration:revert -- -d app/db/ormconfig.ts",
+    "migration:generate": "pnpm exec typeorm migration:generate -- -d app/db/ormconfig.ts app/db/migrations/$(date +\"%Y%m%d%H%M%S\")_%NAME%"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.0",
@@ -47,6 +47,7 @@
     "react-toastify": "^11.0.3",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.0.1",
+    "terser-webpack-plugin": "^5.3.11",
     "typeorm": "^0.3.20",
     "types": "link:next-themes/dist/types",
     "viem": "^2.23.2",

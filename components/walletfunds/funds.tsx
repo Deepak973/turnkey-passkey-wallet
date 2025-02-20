@@ -56,10 +56,11 @@ export default function Funds() {
         client,
         selectedAccount.address
       );
+      console.log("walletClientkajdsnakjdsndaskjn", walletClient);
       setWalletClient(walletClient);
     };
     initializeWalletClient();
-  }, [selectedAccount, client]);
+  }, [selectedAccount]);
 
   useEffect(() => {
     const ethAmountParsed = parseFloat(ethAmount || "0");
@@ -95,13 +96,16 @@ export default function Funds() {
   };
 
   const handlePreviewSendTransaction = async () => {
+    console.log("handlePreviewSendTransaction");
+    console.log("selectedAccount", selectedAccount);
+    console.log("walletClient", walletClient);
     if (!selectedAccount || !walletClient) return;
     try {
       const transaction = await walletClient.prepareTransactionRequest({
         to: getAddress(recipientAddress),
         value: parseEther(ethAmount),
       });
-
+      console.log("transaction", transaction);
       setTransactionRequest(transaction);
       setCurrentView("sendTransaction");
     } catch (error) {

@@ -28,7 +28,7 @@ export const turnkeyConfig = {
     },
   },
   passkey: {
-    rpId: "turnkey-passkey-wallet.vercel.app",
+    rpId: NEXT_PUBLIC_RP_ID,
   },
   rpcUrl: `https://base-sepolia.g.alchemy.com/v2/${NEXT_PUBLIC_ALCHEMY_API_KEY}`,
 };
