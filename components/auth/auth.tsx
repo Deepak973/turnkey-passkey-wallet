@@ -2,8 +2,8 @@
 import React, { Suspense } from "react";
 import { useState } from "react";
 import { ToastContainer } from "react-toastify";
-import { Login } from "@/components/login";
-import { Signup } from "@/components/signup";
+import { Login } from "@/components/auth/login";
+import { Signup } from "@/components/auth/signup";
 import { ArrowLeft, Mail, UserPlus } from "lucide-react";
 
 export const LoginSignup = () => {

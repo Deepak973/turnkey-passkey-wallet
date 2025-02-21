@@ -162,7 +162,7 @@ export function WalletsProvider({ children }: { children: ReactNode }) {
     // @todo - ensure that we don't fetch wallets more than once
     // This should only run at initial page load
     const fetchWallets = async () => {
-      // console.log("fetching wallets");
+      console.log("fetching wallets");
       // console.log(user?.organization?.organizationId);
       if (!user?.organization?.organizationId) {
         return;

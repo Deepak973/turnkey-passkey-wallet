@@ -13,6 +13,7 @@ export const useUser = () => {
     const fetchUser = async () => {
       if (turnkey) {
         // Try and get the current user
+
         const currentUser = await turnkey.getCurrentUser();
 
         // If the user is not found, we assume the user is not logged in

@@ -60,7 +60,7 @@ export default function Funds() {
       setWalletClient(walletClient);
     };
     initializeWalletClient();
-  }, [selectedAccount]);
+  }, [selectedAccount, client]);
 
   useEffect(() => {
     const ethAmountParsed = parseFloat(ethAmount || "0");
