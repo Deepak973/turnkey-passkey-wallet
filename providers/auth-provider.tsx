@@ -17,7 +17,7 @@ import { useTurnkey, TurnkeyProvider } from "@turnkey/sdk-react";
 
 import { Email, User } from "@/types/turnkey";
 import { EthereumWallet } from "@turnkey/wallet-stamper";
-
+import { initEmailAuth } from "@/actions/turnkey";
 const wallet = new EthereumWallet();
 
 export const loginResponseToUser = (
@@ -99,15 +99,23 @@ function authReducer(state: AuthState, action: AuthActionType): AuthState {
 
 const AuthContext = createContext<{
   state: AuthState;
+  completeEmailAuth: (params: {
+    userEmail: string;
+    continueWith: string;
+    credentialBundle: string;
+  }) => Promise<void>;
 
   loginWithPasskey: (username: string) => Promise<void>;
   signupWithPasskey: (email: Email, username: string) => Promise<void>;
+  initEmailLogin: (email: Email) => Promise<void>;
 
   logout: () => Promise<void>;
 }>({
   state: initialState,
+  initEmailLogin: async () => {},
   loginWithPasskey: async () => {},
   signupWithPasskey: async () => {},
+  completeEmailAuth: async () => {},
 
   logout: async () => {},
 });
@@ -189,6 +197,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Login error:", error);
       // Re-throw the error so the calling component can handle it
       throw error;
+    }
+  };
+
+  const completeEmailAuth = async ({
+    userEmail,
+    continueWith,
+    credentialBundle,
+  }: {
+    userEmail: string;
+    continueWith: string;
+    credentialBundle: string;
+  }) => {
+    if (userEmail && continueWith === "email" && credentialBundle) {
+      dispatch({ type: "LOADING", payload: true });
+
+      try {
+        await authIframeClient?.injectCredentialBundle(credentialBundle);
+        if (authIframeClient?.iframePublicKey) {
+          const loginResponse =
+            await authIframeClient?.loginWithReadWriteSession(
+              authIframeClient.iframePublicKey
+            );
+          if (loginResponse?.organizationId) {
+            router.push("/dashboard");
+          }
+        }
+      } catch (error: any) {
+        dispatch({ type: "ERROR", payload: error.message });
+      } finally {
+        dispatch({ type: "LOADING", payload: false });
+      }
+    }
+  };
+
+  const initEmailLogin = async (email: Email) => {
+    dispatch({ type: "LOADING", payload: true });
+    try {
+      const response = await initEmailAuth({
+        email,
+        targetPublicKey: `${authIframeClient?.iframePublicKey}`,
+      });
+
+      if (response) {
+        dispatch({ type: "INIT_EMAIL_AUTH" });
+        router.push(
+          `/email-authorization?userEmail=${encodeURIComponent(email)}`
+        );
+      }
+    } catch (error: any) {
+      dispatch({ type: "ERROR", payload: error.message });
+    } finally {
+      dispatch({ type: "LOADING", payload: false });
     }
   };
 
@@ -294,6 +354,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loginWithPasskey,
         signupWithPasskey,
         logout,
+        initEmailLogin,
+        completeEmailAuth,
       }}
     >
       {children}

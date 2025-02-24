@@ -250,34 +250,37 @@ export const getAuthenticator = async (
   return authenticator;
 };
 
-// const warchestStamper = new ApiKeyStamper({
-//   apiPublicKey: TURNKEY_WARCHEST_API_PUBLIC_KEY,
-//   apiPrivateKey: TURNKEY_WARCHEST_API_PRIVATE_KEY,
-// });
+const getMagicLinkTemplate = (action: string, email: string, method: string) =>
+  `${siteConfig.url.base}/email-authorization?userEmail=${email}&continueWith=${method}&credentialBundle=%s`;
 
-// const warchestClient = new TurnkeyServerClient({
-//   apiBaseUrl: turnkeyConfig.apiBaseUrl,
-//   organizationId: TURNKEY_WARCHEST_ORGANIZATION_ID,
-//   stamper: warchestStamper,
-// });
+export const initEmailAuth = async ({
+  email,
+  targetPublicKey,
+}: {
+  email: Email;
+  targetPublicKey: string;
+}) => {
+  let organizationId = await getSubOrgIdByEmail(email as Email);
 
-// export const fundWallet = async (address: Address) => {
-//   const value = parseEther("0.01");
-//   const { receivedTransactions } = await getTransactions(address);
+  if (!organizationId) {
+    const { subOrg } = await createUserSubOrg({
+      email: email as Email,
+    });
+    organizationId = subOrg.subOrganizationId;
+  }
 
-//   if (receivedTransactions.length >= 1) {
-//     return "";
-//   }
+  const magicLinkTemplate = getMagicLinkTemplate("auth", email, "email");
 
-//   const walletClient = await getTurnkeyWalletClient(
-//     warchestClient as TurnkeyServerClient,
-//     WARCHEST_PRIVATE_KEY_ID
-//   );
+  if (organizationId?.length) {
+    const authResponse = await client.emailAuth({
+      email,
+      targetPublicKey,
+      organizationId,
+      emailCustomization: {
+        magicLinkTemplate,
+      },
+    });
 
-//   const txHash = await walletClient.sendTransaction({
-//     to: address,
-//     value,
-//   });
-
-//   return txHash;
-// };
+    return authResponse;
+  }
+};

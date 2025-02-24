@@ -15,7 +15,7 @@ type Step = "email" | "username";
 export const Signup = ({ onBack }: { onBack: () => void }) => {
   const { user } = useUser();
   const { passkeyClient } = useTurnkey();
-  const { state, signupWithPasskey } = useAuth();
+  const { state, signupWithPasskey, initEmailLogin } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState<Step>("email");
@@ -57,6 +57,10 @@ export const Signup = ({ onBack }: { onBack: () => void }) => {
     } catch (error) {
       toast.error("Error checking email");
     }
+  };
+
+  const handleEmailLogin = async (email: Email) => {
+    await initEmailLogin(email);
   };
 
   const handleSignup = async () => {
@@ -121,6 +125,15 @@ export const Signup = ({ onBack }: { onBack: () => void }) => {
                 </p>
               )}
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full font-semibold"
+              disabled={!isValid}
+              onClick={() => handleEmailLogin(email as Email)}
+            >
+              Continue with email
+            </Button>
             <div className="mt-6 space-y-4">
               <Button
                 type="submit"
