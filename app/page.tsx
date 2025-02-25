@@ -1,5 +1,5 @@
-import { LoginSignup } from "@/components/auth/auth";
+import { Auth } from "@/components/auth/auth";
 
 export default function Landing() {
-  return <LoginSignup />;
+  return <Auth />;
 }

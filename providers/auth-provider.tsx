@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   checkUsernameExists,
   createUserSubOrg,
+  getSubOrgIdByEmail,
   getSubOrgIdByUsername,
 } from "@/actions/turnkey";
 import {
@@ -103,7 +104,7 @@ const AuthContext = createContext<{
     userEmail: string;
     continueWith: string;
     credentialBundle: string;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
 
   loginWithPasskey: (username: string) => Promise<void>;
   signupWithPasskey: (email: Email, username: string) => Promise<void>;
@@ -115,7 +116,7 @@ const AuthContext = createContext<{
   initEmailLogin: async () => {},
   loginWithPasskey: async () => {},
   signupWithPasskey: async () => {},
-  completeEmailAuth: async () => {},
+  completeEmailAuth: async () => false,
 
   logout: async () => {},
 });
@@ -153,7 +154,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const user = data.user;
 
-      const subOrgId = await getSubOrgIdByUsername(username);
+      const subOrgId = await getSubOrgIdByEmail(user.email as Email);
       if (!subOrgId?.length) {
         throw new Error("User organization not found");
       }
@@ -208,7 +209,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     userEmail: string;
     continueWith: string;
     credentialBundle: string;
-  }) => {
+  }): Promise<boolean> => {
     if (userEmail && continueWith === "email" && credentialBundle) {
       dispatch({ type: "LOADING", payload: true });
 
@@ -220,15 +221,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               authIframeClient.iframePublicKey
             );
           if (loginResponse?.organizationId) {
-            router.push("/dashboard");
+            // router.push("/dashboard");
+            return true;
           }
+          return false;
         }
       } catch (error: any) {
         dispatch({ type: "ERROR", payload: error.message });
+        return false;
       } finally {
         dispatch({ type: "LOADING", payload: false });
       }
     }
+    return false;
   };
 
   const initEmailLogin = async (email: Email) => {

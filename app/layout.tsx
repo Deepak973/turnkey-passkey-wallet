@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import { Providers } from "@/providers";
 
 import { siteConfig } from "@/config/site";
+import { WalletsProvider } from "@/providers/wallet-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 

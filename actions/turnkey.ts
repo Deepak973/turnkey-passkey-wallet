@@ -63,16 +63,17 @@ export const createUserSubOrg = async ({
     : [];
 
   const subOrganizationName = `Sub Org - ${email || wallet?.publicKey}`;
-  // const userName = email
-  //   ? email.split("@")?.[0] || email
-  //   : wallet?.publicKey || "";
+  const tempUserName =
+    userName || email
+      ? email?.split("@")?.[0] || email
+      : wallet?.publicKey || "";
 
   const subOrg = await client.createSubOrganization({
     organizationId: turnkeyConfig.organizationId,
     subOrganizationName,
     rootUsers: [
       {
-        userName: userName as string,
+        userName: tempUserName as string,
         userEmail: email,
         authenticators,
         apiKeys,
@@ -260,13 +261,49 @@ export const initEmailAuth = async ({
   email: Email;
   targetPublicKey: string;
 }) => {
-  let organizationId = await getSubOrgIdByEmail(email as Email);
+  // let organizationId = await getSubOrgIdByEmail(email as Email);
+  const organization = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/check-email?email=${email}`
+  );
+  const organizationData = await organization.json();
+  let organizationId = organizationData?.user?.organizationId;
+  console.log("organization", organizationData);
+  console.log("organization", organizationData.user?.organizationId);
 
   if (!organizationId) {
-    const { subOrg } = await createUserSubOrg({
+    const { subOrg, user, subOrganizationName } = await createUserSubOrg({
       email: email as Email,
     });
+
     organizationId = subOrg.subOrganizationId;
+    if (subOrg && user && subOrganizationName) {
+      // Save user to database through API
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_APP_URL + "/api/auth/signup",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            username: "",
+            email,
+            organizationId: subOrg.subOrganizationId,
+            organizationName: subOrganizationName,
+            walletAddress: subOrg.wallet?.addresses[0],
+            userId: user.userId,
+            hasPasskey: false,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to create account");
+      }
+    }
   }
 
   const magicLinkTemplate = getMagicLinkTemplate("auth", email, "email");

@@ -7,14 +7,22 @@ export async function POST(req: Request) {
     const dataSource = await getAppDataSource();
     const accountRepository = dataSource.getRepository(Account);
 
-    const { email, username, organizationId, organizationName, walletAddress } =
-      await req.json();
+    const {
+      email,
+      username,
+      organizationId,
+      organizationName,
+      walletAddress,
+      userId,
+      hasPasskey,
+    } = await req.json();
 
     // Check if user already exists
     const existingUser = await accountRepository.findOne({
-      where: [{ email }, { username }],
+      where: [{ email }],
     });
 
+    console.log("existingUser", existingUser);
     if (existingUser) {
       return NextResponse.json(
         {
@@ -33,6 +41,8 @@ export async function POST(req: Request) {
       organizationId,
       organizationName,
       walletAddress,
+      userId,
+      hasPasskey,
     });
 
     await accountRepository.save(account);

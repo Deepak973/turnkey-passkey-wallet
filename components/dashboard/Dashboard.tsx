@@ -6,10 +6,10 @@ import ActivityCard from "../transactionActivity/activityCard";
 import FundsCard from "../walletfunds/fundCard";
 import { Button } from "@/components/ui/button";
 import { KeyRound } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 
 export function Dashboard() {
-  const { passkeyClient } = useTurnkey();
+  const { passkeyClient, client } = useTurnkey();
   const { user } = useUser();
   const [isCreatingPasskey, setIsCreatingPasskey] = useState(false);
 
@@ -37,39 +37,84 @@ export function Dashboard() {
   };
 
   const addPasskey = async () => {
-    if (!user || !passkeyClient) {
-      toast.error("Unable to add passkey at this time");
-      return;
-    }
-
     try {
-      setIsCreatingPasskey(true);
-      const credential = await createNewPasskey();
+      // setIsAddingPasskey(true);
+      // Get user details
+      const userEmail = user?.email;
+      console.log("user", user);
+      const response = await fetch(
+        `/api/auth/get-user-details?userEmail=${userEmail}`
+      );
+      const data = await response.json();
 
-      if (!credential) {
-        throw new Error("Failed to create passkey");
+      if (!data.success) {
+        toast.error(data.message || "Failed to fetch user details");
+        return;
       }
 
-      const authenticatorsResponse = await passkeyClient.createAuthenticators({
-        authenticators: [
-          {
-            authenticatorName: "New Passkey Authenticator",
-            challenge: credential.encodedChallenge,
-            attestation: credential.attestation,
+      const userDetails = data.user;
+
+      // Create passkey
+      const credential = await passkeyClient?.createUserPasskey({
+        publicKey: {
+          rp: {
+            name: "Turnkey - Demo Embedded Wallet",
           },
-        ],
-        userId: user.userId,
+          user: {
+            name: userDetails.username,
+            displayName: userDetails.username,
+          },
+        },
       });
 
-      if (authenticatorsResponse?.activity.id) {
-        toast.success("New passkey added successfully!");
-        console.log("Authenticator created successfully");
+      if (credential) {
+        const authenticatorsResponse = await client?.createAuthenticators({
+          authenticators: [
+            {
+              authenticatorName: "Passkey",
+              challenge: credential.encodedChallenge,
+              attestation: credential.attestation,
+            },
+          ],
+          userId: userDetails.userId,
+          organizationId: userDetails.organizationId,
+        });
+
+        if (authenticatorsResponse?.activity.id) {
+          // Update hasPasskey status
+          const updateResponse = await fetch(
+            "/api/auth/update-passkey-status",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                email: `deepak.rj.dr@gmail.com`,
+              }),
+            }
+          );
+
+          const updateData = await updateResponse.json();
+
+          if (!updateData.success) {
+            console.error(
+              "Failed to update passkey status:",
+              updateData.message
+            );
+          }
+
+          toast.success("Passkey added successfully!");
+          // router.push("/dashboard");
+        } else {
+          throw new Error("Failed to create authenticator");
+        }
       }
     } catch (error) {
       console.error("Error adding passkey:", error);
-      toast.error("Failed to add passkey. Please try again.");
+      toast.error("Failed to add passkey");
     } finally {
-      setIsCreatingPasskey(false);
+      // setIsAddingPasskey(false);
     }
   };
 
@@ -107,6 +152,18 @@ export function Dashboard() {
               </h2>
               <ActivityCard />
             </div>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </div>
         </div>
       </div>

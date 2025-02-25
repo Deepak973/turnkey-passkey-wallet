@@ -17,6 +17,12 @@ export class Account {
   @Column({ unique: true })
   email: string;
 
+  @Column({ name: "has_passkey" })
+  hasPasskey: boolean;
+
+  @Column({ name: "user_id" })
+  userId: string;
+
   @Column({ name: "organization_id" })
   organizationId: string;
 
