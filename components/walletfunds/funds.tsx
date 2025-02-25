@@ -162,7 +162,7 @@ export default function Funds() {
       <SendTransaction
         transaction={transactionRequest}
         amountUSD={amountUSD}
-        ethPrice={ethPrice}
+        ethPrice={ethPrice ? ethPrice : 0}
         network="Base Sepolia"
         onSend={handleSendTransaction}
         onBack={() => setCurrentView("send")}
