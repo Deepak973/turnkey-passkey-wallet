@@ -6,7 +6,14 @@ module.exports = {
     "./providers/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        "funnel-sans": ["var(--font-funnel-sans)"],
+      },
+      colors: {
+        primary: "#007AFF", // or your preferred primary color
+      },
+    },
   },
   plugins: [],
 };

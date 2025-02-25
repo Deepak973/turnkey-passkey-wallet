@@ -7,9 +7,9 @@ export async function POST(req: Request) {
     const dataSource = await getAppDataSource();
     const accountRepository = dataSource.getRepository(Account);
 
-    const { username } = await req.json();
+    const { email } = await req.json();
 
-    if (!username) {
+    if (!email) {
       return NextResponse.json(
         {
           success: false,
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     }
 
     const account = await accountRepository.findOne({
-      where: { username },
+      where: { email },
     });
 
     if (!account) {

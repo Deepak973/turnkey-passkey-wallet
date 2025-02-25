@@ -127,10 +127,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { turnkey, authIframeClient, passkeyClient, walletClient } =
     useTurnkey();
 
-  const loginWithPasskey = async (username: string) => {
+  const loginWithPasskey = async (email: string) => {
     try {
-      if (!username) {
-        throw new Error("Username is required");
+      if (!email) {
+        throw new Error("Email is required");
       }
 
       const response = await fetch("/api/auth/login", {
@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ email }),
       });
 
       const data = await response.json();

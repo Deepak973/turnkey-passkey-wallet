@@ -99,6 +99,7 @@ export default function Funds() {
     console.log("handlePreviewSendTransaction");
     console.log("selectedAccount", selectedAccount);
     console.log("walletClient", walletClient);
+    console.log("recipientAddress", walletClient);
     if (!selectedAccount || !walletClient) return;
     try {
       const transaction = await walletClient.prepareTransactionRequest({
@@ -156,7 +157,7 @@ export default function Funds() {
 
   if (!isClient) return null;
 
-  if (currentView === "sendTransaction" && transactionRequest && ethPrice) {
+  if (currentView === "sendTransaction" && transactionRequest) {
     return (
       <SendTransaction
         transaction={transactionRequest}
