@@ -322,7 +322,7 @@ export const getAuthenticator = async (
 };
 
 const getMagicLinkTemplate = (action: string, email: string, method: string) =>
-  `${process.env.NEXT_PUBLIC_BACKEND_URL}/email-authorization?userEmail=${email}&continueWith=${method}&credentialBundle=%s`;
+  `${process.env.NEXT_PUBLIC_APP_URL}/email-authorization?userEmail=${email}&continueWith=${method}&credentialBundle=%s`;
 
 export const initEmailAuth = async ({
   email,
