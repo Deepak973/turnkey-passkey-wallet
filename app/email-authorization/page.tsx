@@ -80,7 +80,7 @@ function EmailAuthorizationContent() {
   const updateUserName = async () => {
     if (showUsernameField && username.trim()) {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/update-user`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/update-user`,
         {
           method: "PUT",
           headers: {
@@ -150,7 +150,7 @@ function EmailAuthorizationContent() {
 
         // Update user with passkey info and username if provided
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/update-user-passkey`,
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/update-user-passkey`,
           {
             method: "PUT",
             headers: {

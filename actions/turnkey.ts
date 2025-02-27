@@ -177,7 +177,7 @@ export const checkEmailExists = async (email: Email) => {
 
 export const checkEmailExistsinDB = async (email: Email) => {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/email-exists`,
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/email-exists`,
     {
       method: "POST",
       headers: {
@@ -192,7 +192,7 @@ export const checkEmailExistsinDB = async (email: Email) => {
 
 export const checkUsernameExistsinDB = async (username: string) => {
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/username-exists`,
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/username-exists`,
     {
       method: "POST",
       headers: {
@@ -209,7 +209,7 @@ export const getUserByEmail = async (email: Email) => {
   console.log("getUserByEmail", email);
   const response = await fetch(
     `${
-      process.env.NEXT_PUBLIC_APP_URL
+      process.env.NEXT_PUBLIC_BACKEND_URL
     }/api/auth/get-user-by-email/${encodeURIComponent(email)}`,
     {
       headers: {
@@ -229,7 +229,7 @@ export const getUserByUsername = async (username: string) => {
   console.log("getUserByUsername", username);
   const response = await fetch(
     `${
-      process.env.NEXT_PUBLIC_APP_URL
+      process.env.NEXT_PUBLIC_BACKEND_URL
     }/api/auth/get-user-by-username/${encodeURIComponent(username)}`,
     {
       headers: {
@@ -322,7 +322,7 @@ export const getAuthenticator = async (
 };
 
 const getMagicLinkTemplate = (action: string, email: string, method: string) =>
-  `${process.env.NEXT_PUBLIC_APP_URL}/email-authorization?userEmail=${email}&continueWith=${method}&credentialBundle=%s`;
+  `${process.env.NEXT_PUBLIC_BACKEND_URL}/email-authorization?userEmail=${email}&continueWith=${method}&credentialBundle=%s`;
 
 export const initEmailAuth = async ({
   email,
@@ -346,7 +346,7 @@ export const initEmailAuth = async ({
     if (subOrg && user && subOrganizationName) {
       // Save user to database through API
       const response = await fetch(
-        process.env.NEXT_PUBLIC_APP_URL + "/api/auth/register",
+        process.env.NEXT_PUBLIC_BACKEND_URL + "/api/auth/register",
         {
           method: "POST",
           headers: {
