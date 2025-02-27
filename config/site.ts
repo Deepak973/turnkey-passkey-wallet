@@ -5,8 +5,7 @@ import { SiteConfig } from "@/types/index";
 //     ? `https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}`
 //     : `https://${process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL}`;
 
-const baseUrl = "http://localhost:3000";
-
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
 export const siteConfig: SiteConfig = {
   name: "Demo Embedded Wallet",
   author: "turnkey",
