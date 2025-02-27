@@ -7,6 +7,7 @@ import {
   createUserSubOrg,
   getSubOrgIdByEmail,
   getSubOrgIdByUsername,
+  getUserByEmail,
 } from "@/actions/turnkey";
 import {
   AuthClient,
@@ -133,38 +134,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Email is required");
       }
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
+      const user = await getUserByEmail(email as Email);
+      console.log("user", user?.turnkeyOrganizationId);
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message || "Login failed");
-      }
-
-      if (!data.user) {
-        throw new Error("Invalid response format");
-      }
-
-      const user = data.user;
-
-      const subOrgId = await getSubOrgIdByEmail(user.email as Email);
+      const subOrgId = await getSubOrgIdByEmail(email as Email);
       if (!subOrgId?.length) {
         throw new Error("User organization not found");
       }
+      console.log("subOrgId", subOrgId);
 
       const loginResponse = await passkeyClient?.login();
       if (!loginResponse?.organizationId) {
         throw new Error("Login failed");
       }
 
-      if (loginResponse.organizationId !== user.organizationId) {
+      if (loginResponse.organizationId !== user.turnkeyOrganizationId) {
         throw new Error(
           "Invalid Passkey. Make sure you are using the correct passkey associated with this account"
         );
@@ -221,7 +205,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               authIframeClient.iframePublicKey
             );
           if (loginResponse?.organizationId) {
-            // router.push("/dashboard");
             return true;
           }
           return false;

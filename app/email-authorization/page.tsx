@@ -1,34 +1,46 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/providers/auth-provider";
 import { useTurnkey } from "@turnkey/sdk-react";
-import { KeyRound, Mail } from "lucide-react";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
+import {
+  checkUsernameExists,
+  checkUsernameExistsinDB,
+  getUserByEmail,
+} from "@/actions/turnkey";
+import { Email } from "@/types/turnkey";
+import { useAuth } from "@/providers/auth-provider";
+import "react-toastify/dist/ReactToastify.css";
+import { showToast } from "@/lib/toast";
+import { Toaster } from "sonner";
 
-function EmailAuthContent() {
+type EarnkitUser = {
+  userId: string;
+  turnkeyOrganizationId: string;
+  email: string;
+  username: string;
+  isVerified: boolean;
+  hasPasskey: boolean;
+  turnkeyUserId: string;
+};
+export default function EmailAuthorization() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { completeEmailAuth } = useAuth();
   const { authIframeClient, passkeyClient, client } = useTurnkey();
+  const { completeEmailAuth } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<"email" | "passkey">(
+    "email"
+  );
+  const [isVerified, setIsVerified] = useState(false);
+  const [username, setUsername] = useState("");
+  const [showUsernameField, setShowUsernameField] = useState(false);
+  const [needsUsername, setNeedsUsername] = useState(false);
+  const [user, setUser] = useState<EarnkitUser | null>(null);
   const userEmail = searchParams.get("userEmail");
   const continueWith = searchParams.get("continueWith");
   const credentialBundle = searchParams.get("credentialBundle");
-
-  const [needsUsername, setNeedsUsername] = useState(false);
-  const [username, setUsername] = useState("");
-  const [authMethod, setAuthMethod] = useState<"passkey" | "email" | null>(
-    null
-  );
-  const [isAddingPasskey, setIsAddingPasskey] = useState(false);
-  const [isClientReady, setIsClientReady] = useState(false);
-
-  useEffect(() => {
-    if (client && passkeyClient) {
-      setIsClientReady(true);
-    }
-  }, [client, passkeyClient]);
 
   useEffect(() => {
     if (authIframeClient && userEmail && continueWith && credentialBundle) {
@@ -37,17 +49,21 @@ function EmailAuthContent() {
         continueWith,
         credentialBundle,
       }).then(async (success) => {
+        console.log("success", success);
         if (success) {
           try {
-            const response = await fetch(
-              `/api/auth/check-email?email=${userEmail}`
-            );
-            const data = await response.json();
+            const user = await getUserByEmail(userEmail as Email);
 
-            if (!data.user?.username) {
-              setNeedsUsername(true);
-            } else {
-              router.push("/dashboard");
+            console.log("user", user);
+
+            if (user) {
+              setUser(user);
+              if (user.isVerified) {
+                router.push("/dashboard");
+              } else {
+                setIsVerified(false);
+                setShowUsernameField(true);
+              }
             }
           } catch (error) {
             console.error("Error checking email:", error);
@@ -58,83 +74,32 @@ function EmailAuthContent() {
     }
   }, [authIframeClient, userEmail, continueWith, credentialBundle]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim()) {
+  const handlePasskeyRegistration = async () => {
+    if (!userEmail || !passkeyClient) return;
+
+    if (showUsernameField && !username.trim()) {
       toast.error("Please enter a username");
       return;
     }
 
     try {
-      // Check username availability
-      const checkResponse = await fetch(
-        `/api/auth/check-username?username=${username}`
-      );
-      const checkData = await checkResponse.json();
+      setLoading(true);
 
-      if (checkData.exists) {
-        toast.error("Username already taken");
-        return;
-      }
-
-      if (userEmail) {
-        const response = await fetch("/api/auth/update-username", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail, username }),
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          if (authMethod === "passkey") {
-            await handleAddPasskey();
-          } else if (authMethod === "email") {
-            router.push("/dashboard");
-          } else {
-            toast.error("Please select an authentication method");
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error creating username:", error);
-      toast.error("Failed to create username");
-    }
-  };
-
-  const handleAddPasskey = async () => {
-    if (!isClientReady) {
-      toast.error("Please wait for client initialization");
-      return;
-    }
-
-    try {
-      setIsAddingPasskey(true);
-      // Get user details
-      const response = await fetch(
-        `/api/auth/get-user-details?userEmail=${userEmail}`
-      );
-      const data = await response.json();
-
-      if (!data.success) {
-        toast.error(data.message || "Failed to fetch user details");
-        return;
-      }
-
-      const userDetails = data.user;
-
-      // Create passkey
       const credential = await passkeyClient?.createUserPasskey({
         publicKey: {
           rp: {
             name: "Turnkey - Demo Embedded Wallet",
           },
           user: {
-            name: userDetails.username,
-            displayName: userDetails.username,
+            name: username,
+            displayName: username,
           },
         },
       });
+
+      console.log("credential", credential);
+      console.log("user", user);
+      console.log(client);
 
       if (credential) {
         const authenticatorsResponse = await client?.createAuthenticators({
@@ -145,52 +110,121 @@ function EmailAuthContent() {
               attestation: credential.attestation,
             },
           ],
-          userId: userDetails.userId,
-          organizationId: userDetails.organizationId,
+          userId: user?.turnkeyUserId as string,
+          organizationId: user?.turnkeyOrganizationId as string,
         });
 
-        if (authenticatorsResponse?.activity.id) {
-          // Update hasPasskey status
-          const updateResponse = await fetch(
-            "/api/auth/update-passkey-status",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: userEmail,
-              }),
-            }
-          );
+        console.log("authenticatorsResponse", authenticatorsResponse);
 
-          const updateData = await updateResponse.json();
-
-          if (!updateData.success) {
-            console.error(
-              "Failed to update passkey status:",
-              updateData.message
-            );
-          }
-
-          toast.success("Passkey added successfully!");
-          router.push("/dashboard");
-        } else {
-          throw new Error("Failed to create authenticator");
+        if (!authenticatorsResponse) {
+          toast.error("Failed to register passkey");
+          return;
         }
+
+        // Update user with passkey info and username if provided
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/update-user-passkey`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: userEmail,
+              hasPasskey: true,
+            }),
+          }
+        );
+        if (!response.ok) {
+          throw new Error("Failed to register passkey");
+        }
+
+        showToast.success({
+          message: "Passkey registered successfully!",
+          description: "You can now use your passkey to sign in",
+        });
+        router.push("/dashboard");
       }
-    } catch (error) {
-      console.error("Error adding passkey:", error);
-      toast.error("Failed to add passkey");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to register passkey");
     } finally {
-      setIsAddingPasskey(false);
+      setLoading(false);
     }
   };
 
-  if (!needsUsername) {
+  const handleContinue = async () => {
+    setLoading(true);
+    try {
+      const checkUsername = await checkUsernameExistsinDB(
+        username.trim().toLowerCase()
+      );
+      console.log("checkUsername", checkUsername);
+      if (checkUsername) {
+        showToast.error({
+          message: "Username already exists",
+          description: "Please choose a different username",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (showUsernameField && username.trim()) {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/update-user`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: userEmail,
+              username: username.trim().toLowerCase(),
+              isVerified: true,
+              hasPasskey: false,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to update username");
+        }
+      }
+
+      if (selectedMethod === "passkey") {
+        if (!isVerified) {
+          await handlePasskeyRegistration();
+        } else {
+          router.push(`/login?email=${userEmail}`);
+        }
+      } else {
+        // Handle email authentication
+        if (userEmail && continueWith === "email" && credentialBundle) {
+          await authIframeClient?.injectCredentialBundle(credentialBundle);
+          if (authIframeClient?.iframePublicKey) {
+            const loginResponse =
+              await authIframeClient?.loginWithReadWriteSession(
+                authIframeClient.iframePublicKey
+              );
+            if (loginResponse?.organizationId) {
+              router.push("/dashboard");
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || "An error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!credentialBundle) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-full max-w-xl p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8">
+      <div className="min-h-screen flex items-center justify-center bg-white flex-col gap-10">
+        <h1 className="text-black font-funnel-sans text-[2rem] font-bold">
+          Email Verification
+        </h1>
+        <div className="w-full max-w-lg p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8">
           <div className="flex justify-center">
             <svg
               width="136.5"
@@ -202,27 +236,40 @@ function EmailAuthContent() {
               <path
                 fillRule="evenodd"
                 clipRule="evenodd"
-                d="M60.711 16.3597C60.711 11.8335 64.3802 8.16426 68.9064 8.16426..."
+                d="M60.711 16.3597C60.711 11.8335 64.3802 8.16426 68.9064 8.16426C73.4326 8.16426 77.1018 11.8335 77.1018 16.3597H85.266C85.266 7.32447 77.9416 0 68.9064 0C59.8712 0 52.5467 7.32447 52.5467 16.3597H60.711Z"
                 fill="black"
                 fillOpacity="0.4"
               />
+              {/* ... rest of the SVG path */}
             </svg>
           </div>
           <div className="text-center space-y-2">
-            <h2 className="text-lg font-semibold">Confirm your email</h2>
-            {credentialBundle ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent" />
-                <span>Authenticating...</span>
-              </div>
-            ) : (
-              <p className="text-gray-600">
-                Click the link sent to{" "}
-                <span className="font-bold">{userEmail}</span> to sign in.
-              </p>
-            )}
+            <h2 className="text-[1.375rem] font-funnel-sans font-semibold">
+              Confirm your email
+            </h2>
+            <p className="text-[1.125rem] font-funnel-sans text-black/[60%]">
+              Click the link sent to{" "}
+              <span className="font-bold">{userEmail}</span> to sign in.
+            </p>
           </div>
         </div>
+        <Toaster richColors position="top-right" />
+      </div>
+    );
+  }
+
+  if (isVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white flex-col gap-10">
+        <div className="w-full max-w-lg p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8">
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+            <p className="text-[1.125rem] font-funnel-sans text-black/[60%]">
+              Redirecting to dashboard...
+            </p>
+          </div>
+        </div>
+        <Toaster richColors position="top-right" />
       </div>
     );
   }
@@ -230,100 +277,86 @@ function EmailAuthContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white flex-col gap-10">
       <h1 className="text-black font-funnel-sans text-[2rem] font-bold">
-        Create Account
+        Create Wallet
       </h1>
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8"
-      >
-        {/* Logo */}
-        <div className="flex justify-center">
-          <svg
-            width="136.5"
-            height="80"
-            viewBox="0 0 138 80"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M60.711 16.3597C60.711 11.8335 64.3802 8.16426 68.9064 8.16426..."
-              fill="black"
-              fillOpacity="0.4"
-            />
-          </svg>
-        </div>
+      <div className="w-full max-w-lg p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8">
+        {loading ? (
+          <div className="text-center space-y-2">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+            <p className="text-[1.125rem] font-funnel-sans text-black/[60%]">
+              Please wait...
+            </p>
+          </div>
+        ) : (
+          <>
+            {showUsernameField && (
+              <div className="bg-black/[10%] rounded-full flex gap-4 px-10 py-5">
+                <label className="text-[1.375rem] font-funnel-sans text-black/[40%] flex items-center">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  className="w-full bg-transparent outline-none font-funnel-sans text-[1.375rem] ml-4 text-black"
+                />
+              </div>
+            )}
 
-        {/* Username Input */}
-        <div className="bg-black/[10%] rounded-full flex gap-4 px-10 py-5">
-          <label
-            htmlFor="username"
-            className="text-[1.375rem] font-funnel-sans text-black/[40%] flex items-center justify-center"
-          >
-            Username
-          </label>
-          <input
-            type="text"
-            id="username"
-            placeholder="Enter Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full bg-transparent outline-none font-funnel-sans text-[1.375rem] ml-4 text-black"
-          />
-        </div>
+            <div className="space-y-3">
+              <label className="bg-black/[10%] rounded-full flex items-center gap-3 px-8 py-4 cursor-pointer">
+                <input
+                  type="radio"
+                  name="authMethod"
+                  checked={selectedMethod === "passkey"}
+                  onChange={() => setSelectedMethod("passkey")}
+                  className="form-radio h-4 w-4 text-primary"
+                />
+                <div className="flex-1">
+                  <p className="text-[1.125rem] font-funnel-sans font-medium">
+                    Register Passkey
+                  </p>
+                  <p className="text-[0.875rem] font-funnel-sans text-black/[60%]">
+                    Set up biometric authentication
+                  </p>
+                </div>
+              </label>
 
-        {/* Auth Method Selection */}
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => setAuthMethod("passkey")}
-            className={`w-full px-10 py-5 font-funnel-sans font-medium text-[1.375rem] rounded-full transition-colors flex items-center justify-center gap-2
-              ${
-                authMethod === "passkey"
-                  ? "bg-primary text-white"
-                  : "bg-black/[10%] text-black hover:bg-gray-200"
-              }`}
-            disabled={!isClientReady || isAddingPasskey}
-          >
-            <KeyRound className="h-6 w-6" />
-            {isAddingPasskey ? "Adding Passkey..." : "Add a passkey"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthMethod("email")}
-            className={`w-full px-10 py-5 font-funnel-sans font-medium text-[1.375rem] rounded-full transition-colors flex items-center justify-center gap-2
-              ${
-                authMethod === "email"
-                  ? "bg-primary text-white"
-                  : "bg-black/[10%] text-black hover:bg-gray-200"
-              }`}
-            disabled={isAddingPasskey}
-          >
-            <Mail className="h-6 w-6" />
-            Continue with Email
-          </button>
-        </div>
+              <label className="bg-black/[10%] rounded-full flex items-center gap-3 px-8 py-4 cursor-pointer">
+                <input
+                  type="radio"
+                  name="authMethod"
+                  checked={selectedMethod === "email"}
+                  onChange={() => setSelectedMethod("email")}
+                  className="form-radio h-4 w-4 text-primary"
+                />
+                <div className="flex-1">
+                  <p className="text-[1.125rem] font-funnel-sans font-medium">
+                    Continue Without Passkey
+                  </p>
+                  <p className="text-[0.875rem] font-funnel-sans text-black/[60%]">
+                    You can add a passkey later
+                  </p>
+                </div>
+              </label>
+            </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={
-            !username.trim() || !authMethod || isAddingPasskey || !isClientReady
-          }
-          className="w-full px-10 py-5 bg-primary font-funnel-sans font-medium text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50"
-        >
-          Create Account
-        </button>
-      </form>
+            <button
+              onClick={handleContinue}
+              disabled={loading || (showUsernameField && !username.trim())}
+              className="w-full px-10 py-5 bg-primary font-funnel-sans font-medium text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Processing..." : "Continue"}
+            </button>
+
+            <p className="text-center text-[1rem] font-funnel-sans text-black/[60%]">
+              Email: {userEmail}
+            </p>
+          </>
+        )}
+        <Toaster richColors position="top-right" />
+      </div>
     </div>
-  );
-}
-
-export default function EmailAuth() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <EmailAuthContent />
-    </Suspense>
   );
 }

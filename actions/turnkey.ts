@@ -175,6 +175,76 @@ export const checkEmailExists = async (email: Email) => {
   return subOrgId ? true : false;
 };
 
+export const checkEmailExistsinDB = async (email: Email) => {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/email-exists`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email }),
+    }
+  );
+  const data = await response.json();
+  return data.exists;
+};
+
+export const checkUsernameExistsinDB = async (username: string) => {
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/username-exists`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username }),
+    }
+  );
+  const data = await response.json();
+  return data.exists;
+};
+
+export const getUserByEmail = async (email: Email) => {
+  console.log("getUserByEmail", email);
+  const response = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_APP_URL
+    }/api/auth/get-user-by-email/${encodeURIComponent(email)}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const data = await response.json();
+  if (data.message) {
+    return null;
+  }
+
+  return data;
+};
+
+export const getUserByUsername = async (username: string) => {
+  console.log("getUserByUsername", username);
+  const response = await fetch(
+    `${
+      process.env.NEXT_PUBLIC_APP_URL
+    }/api/auth/get-user-by-username/${encodeURIComponent(username)}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  const data = await response.json();
+  if (data.message) {
+    return null;
+  }
+
+  return data;
+};
+
 export const getUser = async (userId: string, subOrgId: string) => {
   return client.getUser({
     organizationId: subOrgId,
@@ -261,16 +331,13 @@ export const initEmailAuth = async ({
   email: Email;
   targetPublicKey: string;
 }) => {
-  // let organizationId = await getSubOrgIdByEmail(email as Email);
-  const organization = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/check-email?email=${email}`
-  );
-  const organizationData = await organization.json();
-  let organizationId = organizationData?.user?.organizationId;
-  console.log("organization", organizationData);
-  console.log("organization", organizationData.user?.organizationId);
+  const emailExists = await checkEmailExistsinDB(email);
+  let organizationId = await getSubOrgIdByEmail(email as Email);
 
-  if (!organizationId) {
+  console.log("organizationId", organizationId);
+  console.log("emailExists", emailExists);
+
+  if (!emailExists) {
     const { subOrg, user, subOrganizationName } = await createUserSubOrg({
       email: email as Email,
     });
@@ -279,7 +346,7 @@ export const initEmailAuth = async ({
     if (subOrg && user && subOrganizationName) {
       // Save user to database through API
       const response = await fetch(
-        process.env.NEXT_PUBLIC_APP_URL + "/api/auth/signup",
+        process.env.NEXT_PUBLIC_APP_URL + "/api/auth/register",
         {
           method: "POST",
           headers: {
@@ -287,12 +354,11 @@ export const initEmailAuth = async ({
             Accept: "application/json",
           },
           body: JSON.stringify({
-            username: "",
+            username: email?.split("@")?.[0] || "",
             email,
-            organizationId: subOrg.subOrganizationId,
-            organizationName: subOrganizationName,
+            turnkeyOrganizationId: subOrg.subOrganizationId,
             walletAddress: subOrg.wallet?.addresses[0],
-            userId: user.userId,
+            turnkeyUserId: user.userId,
             hasPasskey: false,
           }),
         }
@@ -305,6 +371,9 @@ export const initEmailAuth = async ({
       }
     }
   }
+  console.log("organizationId", organizationId);
+  console.log("email", email);
+  console.log("targetPublicKey", targetPublicKey);
 
   const magicLinkTemplate = getMagicLinkTemplate("auth", email, "email");
 

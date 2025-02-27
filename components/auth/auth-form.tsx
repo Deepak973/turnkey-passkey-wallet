@@ -1,93 +1,82 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { useTurnkey } from "@turnkey/sdk-react";
-import { useUser } from "@/hooks/use-user";
 import { KeyRound, User, Mail } from "lucide-react";
-import { toast } from "react-toastify";
+import { showToast } from "@/lib/toast";
 import { Email } from "@/types/turnkey";
+import { getUserByEmail, getUserByUsername } from "@/actions/turnkey";
+import { Toaster } from "sonner";
 
 const isValidEmail = (value: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
 };
 
-export const AuthForm = ({ onBack }: { onBack: () => void }) => {
-  const { user } = useUser();
+type EarnkitUser = {
+  email: string;
+  username: string;
+  isVerified: boolean;
+  hasPasskey: boolean;
+};
+
+export const AuthForm = () => {
   const { passkeyClient } = useTurnkey();
   const { state, loginWithPasskey, initEmailLogin } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const router = useRouter();
+  const [EarnkitUser, setEarnkitUser] = useState<EarnkitUser | null>(null);
 
-  const getEmailFromUsername = async (
-    username: string
-  ): Promise<string | null> => {
-    try {
-      const response = await fetch(
-        `/api/auth/check-username?username=${username}`
-      );
-      const data = await response.json();
+  const proceedWithEmail = async (email: string) => {
+    const user = await getUserByEmail(email as Email);
 
-      if (data.exists && data.user?.email) {
-        return data.user.email;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error getting email from username:", error);
-      return null;
+    if (user) {
+      setShowOptions(true);
+      setEarnkitUser(user);
+    } else {
+      await initEmailLogin(email as Email);
+      showToast.success({
+        message: "Verification email sent!",
+      });
+    }
+  };
+
+  const proceedWithUsername = async (username: string) => {
+    const user = await getUserByUsername(username);
+    if (user) {
+      setShowOptions(true);
+      setEarnkitUser(user);
+    } else {
+      showToast.error({
+        message: "Username not registered!",
+        description: "Please enter Email to Register",
+      });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim()) {
-      toast.error("Please enter your email or username");
+      showToast.error({
+        message: "Please enter your email or username",
+      });
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const isEmail = isValidEmail(identifier);
-      let emailToUse = identifier;
-
-      if (!isEmail) {
-        // If username provided, get corresponding email
-        const email = await getEmailFromUsername(identifier);
-        if (email) {
-          emailToUse = email;
-        } else {
-          toast.error("Please enter a valid email address to continue");
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Check if user exists using email
-      const response = await fetch(`/api/auth/check-email?email=${emailToUse}`);
-      const data = await response.json();
-
-      if (data.exists) {
-        setShowOptions(true);
-      } else {
-        // New user with email - proceed with signup
-        await initEmailLogin(emailToUse as Email);
-        toast.success("Verification email sent!");
-      }
-    } catch (error) {
-      console.error("Authentication error:", error);
-      toast.error("Failed to process request");
-    } finally {
-      setIsLoading(false);
+    const isEmail = isValidEmail(identifier);
+    if (isEmail) {
+      await proceedWithEmail(identifier);
+    } else {
+      await proceedWithUsername(identifier);
     }
   };
 
   const handlePasskeyLogin = async (identifier: string) => {
     if (!passkeyClient) {
-      toast.error("Passkey client not initialized");
+      showToast.error({
+        message: "Passkey client not initialized",
+      });
       return;
     }
 
@@ -96,26 +85,42 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
       let emailToUse = identifier;
 
       if (!isEmail) {
-        const email = await getEmailFromUsername(identifier);
-        if (!email) {
-          toast.error("Failed to process login");
+        const user = await getUserByUsername(identifier);
+        if (!user) {
+          showToast.error({
+            message: "Failed to process login",
+          });
           return;
         }
-        emailToUse = email;
+        emailToUse = user.email;
+      } else {
+        const user = await getUserByEmail(identifier as Email);
+        if (!user) {
+          showToast.error({
+            message: "Failed to process login",
+          });
+          return;
+        }
+        emailToUse = user.email;
       }
       console.log("emailToUse", emailToUse);
       await loginWithPasskey(emailToUse);
     } catch (error: any) {
       if (error?.message?.includes("User not found")) {
-        toast.error(
-          "Account not found. Please check your details and try again."
-        );
+        showToast.error({
+          message: "Account not found",
+          description: "Please check your details and try again",
+        });
       } else if (error?.message?.includes("No passkey")) {
-        toast.error(
-          "No passkey found for this account. Please set up a passkey first."
-        );
+        showToast.error({
+          message: "No passkey found",
+          description: "Please set up a passkey first",
+        });
       } else {
-        toast.error(error?.message || "Login failed. Please try again.");
+        showToast.error({
+          message: "Login failed",
+          description: error?.message || "Please try again",
+        });
       }
       console.error("Handled login error:", error);
     }
@@ -124,39 +129,41 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
   const handleEmailLogin = async (identifier: string) => {
     try {
       const isEmail = isValidEmail(identifier);
-      let emailToUse = identifier;
-
       if (!isEmail) {
-        const email = await getEmailFromUsername(identifier);
-        if (!email) {
-          toast.error("Failed to process login");
-          return;
-        }
-        emailToUse = email;
+        showToast.error({
+          message: "Invalid email",
+        });
+        return;
       }
 
-      await initEmailLogin(emailToUse as Email);
-      toast.success("Login email sent!");
+      await initEmailLogin(identifier as Email);
+
+      showToast.success({
+        message: "Login email sent!",
+      });
     } catch (error) {
       console.error("Email login error:", error);
-      toast.error("Failed to send login email");
+      showToast.error({
+        message: "Failed to send login email",
+      });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center bg-white px-4 sm:px-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-xl p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-8"
+        className="w-full max-w-xl p-4 sm:p-8 md:p-14 bg-black/[4%] rounded-3xl shadow-sm flex flex-col gap-4 sm:gap-6 md:gap-8"
       >
         {/* Logo */}
         <div className="flex justify-center">
           <svg
-            width="136.5"
-            height="80"
+            width="100"
+            height="60"
             viewBox="0 0 138 80"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
+            className="w-24 h-14 sm:w-32 sm:h-20 md:w-[136.5px] md:h-20"
           >
             <path
               fillRule="evenodd"
@@ -169,20 +176,20 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
         </div>
 
         {/* Email/Username Input */}
-        <div className="bg-black/[10%] rounded-full flex gap-4 px-10 py-5">
+        <div className="bg-black/[10%] rounded-full flex gap-2 sm:gap-4 px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5">
           <label
             htmlFor="identifier"
-            className="text-[1.375rem] font-funnel-sans text-black/[40%] flex items-center justify-center"
+            className="text-base sm:text-lg md:text-[1.375rem] font-funnel-sans text-black/[40%] flex items-center justify-center"
           >
-            {isValidEmail(identifier) ? "Email" : "Email/Username"}
+            Email
           </label>
           <input
             type="text"
             id="identifier"
-            placeholder="Username@email.com"
+            placeholder="earnkit@gmail.com"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            className="w-full bg-transparent outline-none font-funnel-sans text-[1.375rem] ml-4 text-black"
+            className="w-full bg-transparent outline-none font-funnel-sans text-base sm:text-lg md:text-[1.375rem] ml-2 sm:ml-4 text-black"
             disabled={showOptions}
           />
         </div>
@@ -192,26 +199,28 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
           <button
             type="submit"
             disabled={!identifier.trim() || isLoading}
-            className="w-full px-10 py-5 bg-primary font-funnel-sans font-medium text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50"
+            className="w-full px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-primary font-funnel-sans font-medium text-base sm:text-lg md:text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors disabled:opacity-50"
           >
             {isLoading ? "Processing..." : "Submit"}
           </button>
         ) : (
-          <div className="space-y-4">
-            <button
-              type="button"
-              onClick={() => handlePasskeyLogin(identifier)}
-              className="w-full px-10 py-5 bg-primary font-funnel-sans font-medium text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
-            >
-              <KeyRound className="h-6 w-6" />
-              Continue with Passkey
-            </button>
+          <div className="space-y-3 sm:space-y-4">
+            {EarnkitUser?.hasPasskey ? (
+              <button
+                type="button"
+                onClick={() => handlePasskeyLogin(identifier)}
+                className="w-full px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-primary font-funnel-sans font-medium text-base sm:text-lg md:text-[1.375rem] text-white rounded-full hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <KeyRound className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                Continue with Passkey
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => handleEmailLogin(identifier)}
-              className="w-full px-10 py-5 bg-black/[10%] font-funnel-sans font-medium text-[1.375rem] text-black rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-black/[10%] font-funnel-sans font-medium text-base sm:text-lg md:text-[1.375rem] text-black rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
             >
-              <Mail className="h-6 w-6" />
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
               Continue with Email
             </button>
             <button
@@ -220,7 +229,7 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
                 setShowOptions(false);
                 setIdentifier("");
               }}
-              className="w-full px-10 py-5 bg-black/[10%] font-funnel-sans font-medium text-[1.375rem] text-black rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+              className="w-full px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-black/[10%] font-funnel-sans font-medium text-base sm:text-lg md:text-[1.375rem] text-black rounded-full hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
             >
               Try Another Account
             </button>
@@ -231,18 +240,19 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
         <button
           type="button"
           onClick={() => setShowMoreOptions(!showMoreOptions)}
-          className="w-full px-10 py-5 bg-black/[10%] text-gray-700 rounded-full flex items-center justify-between hover:bg-gray-200 transition-colors"
+          className="w-full px-4 sm:px-8 md:px-10 py-3 sm:py-4 md:py-5 bg-black/[10%] text-gray-700 rounded-full flex items-center justify-between hover:bg-gray-200 transition-colors"
         >
-          <span className="font-funnel-sans text-black font-normal text-[1.375rem]">
+          <span className="font-funnel-sans text-black font-normal text-base sm:text-lg md:text-[1.375rem]">
             More Options
           </span>
           <span>
             <svg
-              width="10"
-              height="16"
+              width="8"
+              height="12"
               viewBox="0 0 10 16"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              className="w-2 h-3 sm:w-2.5 sm:h-4 md:w-3 md:h-4"
             >
               <path
                 fillRule="evenodd"
@@ -253,6 +263,7 @@ export const AuthForm = ({ onBack }: { onBack: () => void }) => {
             </svg>
           </span>
         </button>
+        <Toaster richColors position="top-right" />
       </form>
     </div>
   );
