@@ -20,7 +20,7 @@ import { useUser } from "@/hooks/useUser";
 import { useTurnkey } from "@turnkey/sdk-react";
 import { getUserByEmail } from "@/actions/turnkey";
 import { EarnkitUser, Email } from "@/types/turnkey";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+// import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function Account() {
   const { state: authState, logout } = useAuth();
@@ -190,7 +190,7 @@ export default function Account() {
       )}
 
       {/* Settings Modal */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+      {/* <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
         <DialogContent>
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Settings</h2>
@@ -217,7 +217,7 @@ export default function Account() {
             )}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </div>
   );
 }
