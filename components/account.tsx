@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { useWallets } from "@/providers/wallet-provider";
 import {
@@ -11,27 +11,132 @@ import {
   UserIcon,
   MailIcon,
   WalletIcon,
+  Settings,
+  KeyRound,
 } from "lucide-react";
 import { truncateAddress } from "@/lib/utils";
-import { toast } from "react-toastify";
+import { showToast } from "@/lib/toast";
 import { useUser } from "@/hooks/use-user";
+import { useTurnkey } from "@turnkey/sdk-react";
+import { getUserByEmail } from "@/actions/turnkey";
+import { Email } from "@/types/turnkey";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
+type EarnkitUser = {
+  email: string;
+  username: string;
+  isVerified: boolean;
+  hasPasskey: boolean;
+};
 
 export default function Account() {
   const { state: authState, logout } = useAuth();
   const { state: walletState } = useWallets();
-  const { user } = useUser();
+  // const { user } = useUser();
   const { selectedAccount } = walletState;
   const [isOpen, setIsOpen] = useState(false);
-
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCreatingPasskey, setIsCreatingPasskey] = useState(false);
+  const { passkeyClient, client } = useTurnkey();
+  const [user, setUser] = useState<EarnkitUser | null>(null);
   console.log("state", authState);
   const handleLogout = () => {
     logout();
   };
 
+  const getUser = async () => {
+    const user = await getUserByEmail(sessionStorage.getItem("email") as Email);
+    setUser(user);
+    return user;
+  };
+
+  useEffect(() => {
+    getUser();
+  }, []);
+
   const handleCopyAddress = () => {
     if (selectedAccount?.address) {
       navigator.clipboard.writeText(selectedAccount.address);
-      toast.success("Address copied to clipboard");
+      showToast.success({ message: "Address copied to clipboard" });
+    }
+  };
+
+  const handlePasskeyRegistration = async () => {
+    if (!passkeyClient) return;
+
+    setIsCreatingPasskey(true);
+    try {
+      const userData = await getUserByEmail(
+        sessionStorage.getItem("email") as Email
+      );
+      if (!userData) {
+        showToast.error({ message: "User not found" });
+        return;
+      }
+
+      const credential = await passkeyClient?.createUserPasskey({
+        publicKey: {
+          rp: {
+            name: "Turnkey - Demo Embedded Wallet",
+          },
+          user: {
+            name: userData?.username,
+            displayName: userData?.username,
+          },
+        },
+      });
+
+      if (credential) {
+        const authenticatorsResponse = await client?.createAuthenticators({
+          authenticators: [
+            {
+              authenticatorName: "Passkey",
+              challenge: credential.encodedChallenge,
+              attestation: credential.attestation,
+            },
+          ],
+          userId: userData?.turnkeyUserId as string,
+          organizationId: userData?.turnkeyOrganizationId as string,
+        });
+        console.log("authenticatorsResponse", authenticatorsResponse);
+
+        if (!authenticatorsResponse) {
+          showToast.error({ message: "Failed to register passkey" });
+          return;
+        }
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/update-user-passkey`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: userData.email,
+              hasPasskey: true,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to register passkey");
+        }
+
+        showToast.success({
+          message: "Passkey registered successfully!",
+          description: "You can now use your passkey to sign in",
+        });
+
+        setIsSettingsOpen(false);
+      }
+    } catch (error: any) {
+      showToast.error({
+        message: "Failed to register passkey",
+        description: error.message,
+      });
+    } finally {
+      setIsCreatingPasskey(false);
     }
   };
 
@@ -84,6 +189,18 @@ export default function Account() {
             </div>
           </div>
 
+          {/* Settings Button */}
+          <button
+            onClick={() => {
+              setIsSettingsOpen(true);
+              setIsOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 text-gray-600"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
+          </button>
+
           {/* Logout Button */}
           <button
             onClick={handleLogout}
@@ -94,6 +211,36 @@ export default function Account() {
           </button>
         </div>
       )}
+
+      {/* Settings Modal */}
+      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <DialogContent>
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold">Settings</h2>
+
+            {!user?.hasPasskey && (
+              <button
+                onClick={handlePasskeyRegistration}
+                disabled={isCreatingPasskey}
+                className="flex w-full items-center justify-between p-4 text-left hover:bg-gray-50 rounded-lg border"
+              >
+                <div className="flex items-center gap-3">
+                  <KeyRound className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <p className="font-medium">Add Passkey</p>
+                    <p className="text-sm text-gray-500">
+                      Enable biometric login
+                    </p>
+                  </div>
+                </div>
+                {isCreatingPasskey && (
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-primary border-t-transparent" />
+                )}
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -63,6 +63,7 @@ function EmailAuthorizationContent() {
               setUser(user);
               if (user.isVerified) {
                 router.push("/dashboard");
+                sessionStorage.setItem("email", user.email);
               } else {
                 setIsVerified(false);
                 setShowUsernameField(true);
@@ -172,6 +173,7 @@ function EmailAuthorizationContent() {
         });
 
         await updateUserName();
+        sessionStorage.setItem("email", userEmail);
         router.push("/dashboard");
       }
     } catch (error: any) {
@@ -212,6 +214,7 @@ function EmailAuthorizationContent() {
               );
             if (loginResponse?.organizationId) {
               await updateUserName();
+              sessionStorage.setItem("email", userEmail);
               router.push("/dashboard");
             }
           }

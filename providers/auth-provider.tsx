@@ -176,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         type: "PASSKEY",
         payload: userResponse,
       });
-
+      sessionStorage.setItem("email", user.email);
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
