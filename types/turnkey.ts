@@ -36,4 +36,14 @@ export interface ReadOnlySession {
   sessionExpiry: number;
 }
 
+export type EarnkitUser = {
+  email: string;
+  username: string;
+  isVerified: boolean;
+  hasPasskey: boolean;
+  walletAddress: Address;
+  turnkeyUserId: string;
+  turnkeyOrganizationId: string;
+};
+
 export type OauthProviderParams = TurnkeyApiTypes["v1OauthProviderParams"];

@@ -4,20 +4,13 @@ import { useAuth } from "@/providers/auth-provider";
 import { useTurnkey } from "@turnkey/sdk-react";
 import { KeyRound, User, Mail } from "lucide-react";
 import { showToast } from "@/lib/toast";
-import { Email } from "@/types/turnkey";
+import { EarnkitUser, Email } from "@/types/turnkey";
 import { getUserByEmail, getUserByUsername } from "@/actions/turnkey";
 import { Toaster } from "sonner";
 
 const isValidEmail = (value: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(value);
-};
-
-type EarnkitUser = {
-  email: string;
-  username: string;
-  isVerified: boolean;
-  hasPasskey: boolean;
 };
 
 export const AuthForm = () => {

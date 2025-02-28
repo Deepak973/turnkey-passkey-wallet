@@ -16,18 +16,11 @@ import {
 } from "lucide-react";
 import { truncateAddress } from "@/lib/utils";
 import { showToast } from "@/lib/toast";
-import { useUser } from "@/hooks/use-user";
+import { useUser } from "@/hooks/useUser";
 import { useTurnkey } from "@turnkey/sdk-react";
 import { getUserByEmail } from "@/actions/turnkey";
-import { Email } from "@/types/turnkey";
+import { EarnkitUser, Email } from "@/types/turnkey";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-
-type EarnkitUser = {
-  email: string;
-  username: string;
-  isVerified: boolean;
-  hasPasskey: boolean;
-};
 
 export default function Account() {
   const { state: authState, logout } = useAuth();
@@ -38,21 +31,12 @@ export default function Account() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isCreatingPasskey, setIsCreatingPasskey] = useState(false);
   const { passkeyClient, client } = useTurnkey();
-  const [user, setUser] = useState<EarnkitUser | null>(null);
+
   console.log("state", authState);
   const handleLogout = () => {
     logout();
   };
-
-  const getUser = async () => {
-    const user = await getUserByEmail(sessionStorage.getItem("email") as Email);
-    setUser(user);
-    return user;
-  };
-
-  useEffect(() => {
-    getUser();
-  }, []);
+  const { user } = useUser();
 
   const handleCopyAddress = () => {
     if (selectedAccount?.address) {
@@ -65,23 +49,16 @@ export default function Account() {
     if (!passkeyClient) return;
 
     setIsCreatingPasskey(true);
-    try {
-      const userData = await getUserByEmail(
-        sessionStorage.getItem("email") as Email
-      );
-      if (!userData) {
-        showToast.error({ message: "User not found" });
-        return;
-      }
 
+    try {
       const credential = await passkeyClient?.createUserPasskey({
         publicKey: {
           rp: {
             name: "Turnkey - Demo Embedded Wallet",
           },
           user: {
-            name: userData?.username,
-            displayName: userData?.username,
+            name: user?.username,
+            displayName: user?.username,
           },
         },
       });
@@ -95,8 +72,8 @@ export default function Account() {
               attestation: credential.attestation,
             },
           ],
-          userId: userData?.turnkeyUserId as string,
-          organizationId: userData?.turnkeyOrganizationId as string,
+          userId: user?.turnkeyUserId as string,
+          organizationId: user?.turnkeyOrganizationId as string,
         });
         console.log("authenticatorsResponse", authenticatorsResponse);
 
@@ -113,7 +90,7 @@ export default function Account() {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              email: userData.email,
+              email: user?.email,
               hasPasskey: true,
             }),
           }
@@ -147,7 +124,7 @@ export default function Account() {
         className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md bg-white hover:bg-gray-100"
       >
         <UserIcon className="w-4 h-4 text-gray-600" />
-        {authState.user?.username || "Account"}
+        {user?.username || "Account"}
         {isOpen ? (
           <ChevronUpIcon className="w-4 h-4 text-gray-600" />
         ) : (
