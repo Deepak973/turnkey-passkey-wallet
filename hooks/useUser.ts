@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
+
 import { Email, EarnkitUser } from "@/types/turnkey";
 import { getUserByEmail } from "@/actions/turnkey";
 import { useTurnkey } from "@turnkey/sdk-react";
+import { showToast } from "@/lib/toast";
 
 export function useUser() {
   const [user, setUser] = useState<EarnkitUser | null>(null);
@@ -31,7 +32,7 @@ export function useUser() {
     try {
       const userData = await getUser();
       if (!userData) {
-        toast.error("User not found");
+        showToast.error({ message: "User not found" });
         return;
       }
 
@@ -61,7 +62,7 @@ export function useUser() {
         });
 
         if (!authenticatorsResponse) {
-          toast.error("Failed to register passkey");
+          showToast.error({ message: "Failed to register passkey" });
           return;
         }
 
@@ -83,7 +84,8 @@ export function useUser() {
           throw new Error("Failed to register passkey");
         }
 
-        toast.success("Passkey registered successfully!", {
+        showToast.success({
+          message: "Passkey registered successfully!",
           description: "You can now use your passkey to sign in",
         });
 
@@ -91,7 +93,8 @@ export function useUser() {
         await getUser();
       }
     } catch (error: any) {
-      toast.error("Failed to register passkey", {
+      showToast.error({
+        message: "Failed to register passkey",
         description: error.message,
       });
     } finally {
